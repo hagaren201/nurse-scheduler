@@ -1,6 +1,6 @@
 import streamlit as st
 import pandas as pd
-
+from pathlib import Path
 from engine.loader import load_schedule_input
 from engine.capacity import derive_monthly_max_shifts
 from engine.greedy import multi_run_greedy
@@ -30,11 +30,33 @@ if "mode" not in st.session_state:
 # =========================================
 # SIDEBAR – INPUT
 # =========================================
+from pathlib import Path
+
 st.sidebar.header("1️⃣ Input")
+
+BASE_DIR = Path(__file__).resolve().parent
+SAMPLE_INPUT_PATH = BASE_DIR / "data" / "schedule_input_sample.xlsx"
 
 uploaded_file = st.sidebar.file_uploader(
     "Upload schedule_input.xlsx",
     type=["xlsx"]
+)
+
+if uploaded_file is not None:
+    input_source = uploaded_file
+    st.sidebar.success("Using uploaded Excel file")
+else:
+    if not SAMPLE_INPUT_PATH.exists():
+        st.error("Sample input file not found. Please upload an Excel file.")
+        st.stop()
+
+    input_source = SAMPLE_INPUT_PATH
+    st.sidebar.info("Using sample schedule_input (default)")
+
+st.sidebar.markdown(
+    "📌 **Default behavior**  \n"
+    "- No upload → sample data used  \n"
+    "- Upload Excel → your data applied"
 )
 
 N_RUNS = st.sidebar.slider(
@@ -69,12 +91,8 @@ weights = {
 # =========================================
 # MAIN – RUN
 # =========================================
-if uploaded_file is None:
-    st.info("⬅️ Upload schedule_input.xlsx to start")
-    st.stop()
-
 # LOAD INPUT
-nurses, calendar, requirements, requests = load_schedule_input(uploaded_file)
+nurses, calendar, requirements, requests = load_schedule_input(input_source)
 nurses = derive_monthly_max_shifts(calendar, nurses)
 
 st.success(
